@@ -1,8 +1,5 @@
 package com.chimbori.crux_kmp.plugins
 
-import com.beust.klaxon.JsonArray
-import com.beust.klaxon.JsonObject
-import com.beust.klaxon.Parser
 import com.chimbori.crux_kmp.api.Extractor
 import com.chimbori.crux_kmp.api.Fields.BACKGROUND_COLOR_HEX
 import com.chimbori.crux_kmp.api.Fields.BACKGROUND_COLOR_HTML
@@ -25,8 +22,12 @@ import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.http.takeFrom
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
-public class WebAppManifestParser(private val httpClient: HttpClient) : Extractor {
+class WebAppManifestParser(private val httpClient: HttpClient) : Extractor {
     override fun canExtract(url: Url): Boolean = url.isLikelyArticle()
 
     override suspend fun extract(request: Resource): Resource? {
@@ -40,7 +41,7 @@ public class WebAppManifestParser(private val httpClient: HttpClient) : Extracto
 
         val manifest: JsonObject? = httpClient.httpGetContent(webAppManifestUrl)?.let { rawJSON ->
             try {
-                Parser.default().parse(StringBuilder(rawJSON)) as JsonObject
+                Json.decodeFromString<JsonObject>(rawJSON)
             } catch (t: Throwable) {
                 // Silently ignore all JSON errors, since they are not recoverable.
                 null
@@ -58,7 +59,7 @@ public class WebAppManifestParser(private val httpClient: HttpClient) : Extracto
                 ORIENTATION to manifest.element("orientation"),
                 FAVICON_URL to getLargestIconUrl(
                     webAppManifestUrl,
-                    manifest?.array<JsonObject>("icons")
+                    manifest?.get("icons") as JsonArray
                 ),
                 (if (themeColorHtml?.startsWith("#") == true) THEME_COLOR_HEX else THEME_COLOR_HTML) to themeColorHtml,
                 (if (backgroundColorHtml?.startsWith("#") == true) BACKGROUND_COLOR_HEX else BACKGROUND_COLOR_HTML) to backgroundColorHtml,
@@ -66,13 +67,14 @@ public class WebAppManifestParser(private val httpClient: HttpClient) : Extracto
         ).removeNullValues()
     }
 
-    private fun getLargestIconUrl(baseUrl: Url?, icons: JsonArray<JsonObject>?): Url? {
+    private fun getLargestIconUrl(baseUrl: Url?, icons: JsonArray?): Url? {
         icons
-            ?.maxByOrNull { sizeElement -> parseSize((sizeElement as? JsonObject)?.string("sizes")) }
-            .let { iconElement -> iconElement?.string("src") }
-            ?.let { iconUrl -> return if (baseUrl != null) URLBuilder(baseUrl).takeFrom(it).build() else iconUrl.toHttpUrlOrNull() }
+            ?.map { it as JsonObject }
+            ?.maxByOrNull { sizeElement -> parseSize(sizeElement.element("sizes")) }
+            .let { iconElement -> iconElement?.element("src") }
+            ?.let { iconUrl -> return if (baseUrl != null) URLBuilder(baseUrl).takeFrom(iconUrl).build() else iconUrl.toUrlOrNull() }
             ?: return null
     }
 
-    private fun JsonObject?.element(name: String): String? = this?.string(name)?.trim()
+    private fun JsonObject?.element(name: String): String? = this?.get(name)?.jsonPrimitive?.content?.trim()
 }

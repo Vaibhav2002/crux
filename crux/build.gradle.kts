@@ -2,24 +2,10 @@ import org.jetbrains.kotlin.gradle.dsl.ExplicitApiMode.Strict
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-  alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.ben.manes.versions)
   alias(libs.plugins.maven.publish)
-  alias(libs.plugins.androidLibrary) apply false
-  alias(libs.plugins.jetbrainsKotlinAndroid) apply false
-}
-
-repositories {
-  mavenCentral()
-}
-
-buildscript {
-  repositories {
-    mavenCentral()
-  }
-  dependencies {
-    classpath(libs.kotlin.plugin)
-  }
+  alias(libs.plugins.androidLibrary)
+  alias(libs.plugins.jetbrainsKotlinAndroid)
 }
 
 dependencies {
@@ -39,9 +25,9 @@ configurations.all {
   resolutionStrategy.cacheChangingModulesFor(0, "seconds")
 }
 
-tasks.jar {
-  archiveBaseName.set("crux")
-}
+//tasks.jar {
+//  archiveBaseName.set("crux")
+//}
 
 tasks.withType<KotlinCompile>().configureEach {
   kotlinOptions {
@@ -58,4 +44,8 @@ kotlin {
 
 mavenPublishing {
   signAllPublications()
+}
+
+android {
+  namespace = "com.chimbori.crux"
 }

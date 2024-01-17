@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinx.serialization)
 }
 
 kotlin {
@@ -28,7 +29,7 @@ kotlin {
           dependencies {
             implementation(libs.ktor.client.core)
             implementation(libs.ksoup)
-            implementation(libs.klaxon)
+            implementation(libs.kotlinx.serialization)
           }
         }
     }
